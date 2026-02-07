@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Tính PWM - Pin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg-primary: #0f172a;
+    --bg-card: #020617;
+    --text-primary: #e5e7eb;
+    --text-secondary: #94a3b8;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --input-bg: #1e293b;
+    --border: #334155;
+    --result-bg: #0f172a;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .box {
+    background: var(--bg-card);
+    padding: 32px 24px;
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    width: 100%;
+    max-width: 400px;
+    transition: all 0.3s ease;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 32px;
+    color: #f1f5f9;
+  }
+
+  h2 span {
+    color: #fbbf24;
+  }
+
+  input {
+    width: 100%;
+    padding: 16px 18px;
+    margin: 10px 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input::placeholder {
+    color: #64748b;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  }
+
+  button {
+    width: 100%;
+    padding: 18px;
+    margin: 20px 0 0;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+    font-size: 1.15rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  button:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+  }
+
+  .result-container {
+    margin-top: 24px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .result-container.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .result-text {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin-bottom: 14px;
+    color: #cbd5e1;
+  }
+
+  .result-numbers {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #93c5fd;
+    background: var(--result-bg);
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: 1px solid #1e293b;
+    display: inline-block;
+    min-width: 160px;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+
+  .result-note {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h2><span>⚡</span> Tính PWM - Pin</h2>
+
+  <input id="battery" type="number" step="any" placeholder="Nhập điện năng của pin" min="1" inputmode="numeric">
+  <input id="target" type="number" step="any" placeholder="Nhập sản lượng lưới điện" min="1" inputmode="numeric">
+
+  <button onclick="calc()">Tính toán</button>
+
+  <div class="result-container" id="resultContainer">
+    <div class="result-text" id="resultText"></div>
+    <div class="result-numbers hidden" id="resultNumbers"></div>
+    <div class="result-note hidden" id="resultNote"></div>
+  </div>
+</div>
+
+<script>
+function calc() {
+  const batteryEl   = document.getElementById("battery");
+  const targetEl    = document.getElementById("target");
+  const textEl      = document.getElementById("resultText");
+  const numsEl      = document.getElementById("resultNumbers");
+  const noteEl      = document.getElementById("resultNote");
+  const container   = document.getElementById("resultContainer");
+
+  // Reset
+  textEl.textContent = "";
+  numsEl.textContent = "";
+  noteEl.textContent = "";
+  numsEl.classList.add("hidden");
+  noteEl.classList.add("hidden");
+  container.classList.remove("visible");
+
+  const batteryInput = parseFloat(batteryEl.value);
+  const targetInput  = parseFloat(targetEl.value);
+
+  if (isNaN(batteryInput) || isNaN(targetInput) || batteryInput <= 0 || targetInput <= 0) {
+    textEl.textContent = "⚠️ Vui lòng nhập số hợp lệ!";
+    container.classList.add("visible");
+    return;
+  }
+
+  let batteryPower = Math.floor(batteryInput * 20);
+  let targetPower  = targetInput - 150;
+
+  if (targetPower <= 0) {
+    textEl.textContent = "⚡ Không cần áp dụng PWM - Pin.";
+    container.classList.add("visible");
+    return;
+  }
+
+  const positions = [];
+  let index = 0;
+
+  for (let i = 0; i < 12; i++) {
+    index++;
+    batteryPower = Math.floor(batteryPower / 2);
+    if (batteryPower <= 0) break;
+    if (targetPower >= batteryPower) {
+      targetPower -= batteryPower;
+      positions.push(index);
+      if (targetPower <= 0 || batteryPower <= 0) break;
+    }
+  }
+
+  if (positions.length > 0) {
+    textEl.innerHTML = "Thay các <strong>Van Gộp</strong> ở vị trí sau bằng <strong>Mối Nối Băng Tải</strong>";
+    const yellowNumbers = positions
+      .map(num => `<span style="color: #FFC83D; font-weight: bold;">${num}</span>`)
+      .join(', ');
+    numsEl.innerHTML = yellowNumbers;
+    noteEl.innerHTML = "(Từ phía bên phải <strong>Van Tách</strong> → <strong>Van Gộp</strong> ngay dưới là vị trí thứ nhất, đếm sang phải tăng dần)";
+    numsEl.classList.remove("hidden");
+    noteEl.classList.remove("hidden");
+  }
+  container.classList.add("visible");
+}
+</script>
+
+</body>
+</html>
